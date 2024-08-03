@@ -1,2 +1,2 @@
-# brawlballing
-bot to tell me when 5v5 brawlball is up
+# BrawlBot
+A discord bot to automatically notify severs of event changes / display info of users
