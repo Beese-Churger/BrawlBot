@@ -50,3 +50,5 @@ Ubuntu | Bash
 ```
 $ make aws-lambda-package-{PROJECT_NAME}
 ```
+
+Put the zip file into your AWS lambda function via the code upload.
