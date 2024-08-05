@@ -13,3 +13,7 @@ output "function_name" {
 output "base_url" {
   value = aws_api_gateway_deployment.deployment.invoke_url
 }
+
+output "elastic_ip" {
+  value = aws_eip.lambdas.address
+}

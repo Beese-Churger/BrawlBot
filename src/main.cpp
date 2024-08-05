@@ -103,7 +103,7 @@ bool verify_payload(std::string signature, std::string timestamp, std::string bo
 
 invocation_response LambdaHandler(invocation_request const& request) 
 {
-    std::cout << request.payload << std::endl;
+    std::cout << "Request payload: " << request.payload << std::endl;
 
     // Parse JSON payload
     json event;
@@ -124,7 +124,7 @@ invocation_response LambdaHandler(invocation_request const& request)
 
     json body_json = json::parse(body);
 
-     // Check if the body type is 1
+    // Check if the body type is 1
     if (body_json["type"] == 1) 
     {
         std::cout << "Ping request received" << std::endl;

@@ -40,6 +40,18 @@ resource "aws_lambda_function" "brawlbot-main" {
   handler = "lambda.handler"
 
   role = aws_iam_role.lambda_exec.arn
+
+  environment {
+    variables = {
+      DISCORD_PUBLIC_KEY   = local.envs["DISCORD_PUBLIC_KEY"]
+      BRAWLSTARS_API_TOKEN = local.envs["BRAWLSTARS_API_TOKEN"]
+    }
+  }
+
+  vpc_config {
+    subnet_ids         = [aws_subnet.private-lambda.id]
+    security_group_ids = [aws_security_group.allow_tls.id]
+  }
 }
 
 resource "aws_lambda_permission" "apigw" {
@@ -73,9 +85,13 @@ resource "aws_iam_role" "lambda_exec" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_policy" {
+resource "aws_iam_role_policy_attachment" "lambda_exec_policy" {
+  for_each = toset([
+    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+    "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+  ])
   role       = aws_iam_role.lambda_exec.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  policy_arn = each.value
 }
 
 resource "aws_api_gateway_resource" "proxy" {
