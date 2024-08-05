@@ -52,7 +52,7 @@ std::string get_brawl_stars_data() {
     curl = curl_easy_init();
     if(curl) {
         struct curl_slist *headers = NULL;
-        headers = curl_slist_append(headers, "Authorization: Bearer {TOKEN}");
+        headers = curl_slist_append(headers, ("Authorization: Bearer " + BRAWLSTARS_API_TOKEN).c_str());
         curl_easy_setopt(curl, CURLOPT_URL, "https://api.brawlstars.com/v1/events/rotation");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
