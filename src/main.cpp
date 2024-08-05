@@ -13,6 +13,8 @@ using json = nlohmann::json;
 
 std::string DISCORD_PUBLIC_KEY = std::getenv("DISCORD_PUBLIC_KEY");
 std::string BRAWLSTARS_API_TOKEN = std::getenv("BRAWLSTARS_API_TOKEN");
+std::string AUTH_HEADER = "Authorization: Bearer " + BRAWLSTARS_API_TOKEN;
+std::string ENDPOINT = "https://api.brawlstars.com";
 
 // Function to handle the response from the Brawl Stars API
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
@@ -20,6 +22,34 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::stri
     s->append((char*)contents, newLength);
     return newLength;
 }
+
+std::string get_brawlers() {
+    CURL* curl;
+    CURLcode res;
+    std::string readBuffer;
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+    std::string url = ENDPOINT + "/v1/brawlers";
+
+    if (curl)
+    {
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+        struct curl_slist *headers = NULL;
+        headers = curl_slist_append(headers, AUTH_HEADER.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+
+        res = curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
+    }
+    curl_global_cleanup();
+    return readBuffer;
+}
+
 std::string get_brawl_stars_data() {
     CURL* curl;
     CURLcode res;
@@ -29,8 +59,7 @@ std::string get_brawl_stars_data() {
     curl = curl_easy_init();
     if(curl) {
         struct curl_slist *headers = NULL;
-        std::string auth = "Authorization: Bearer " + BRAWLSTARS_API_TOKEN;
-        headers = curl_slist_append(headers, auth.c_str());
+        headers = curl_slist_append(headers, AUTH_HEADER.c_str());
         curl_easy_setopt(curl, CURLOPT_URL, "https://api.brawlstars.com/v1/events/rotation");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
@@ -46,9 +75,9 @@ invocation_response CommandHandler(json body)
 {
     std::string command = body["data"]["name"];
 
-    if(command == "bleb")
+    if(command == "events")
     {
-         std::string brawl_data = get_brawl_stars_data();
+        std::string brawl_data = get_brawl_stars_data();
         json response_json;
         response_json["type"] = 4; 
         response_json["data"]["content"] = brawl_data; 
@@ -58,6 +87,19 @@ invocation_response CommandHandler(json body)
         response["headers"]["Content-Type"] = "application/json";
         response["body"] = response_json.dump();
         std::cout << response.dump() << std::endl;
+        return invocation_response::success(response.dump(), "application/json");
+    }
+    else if (command == "brawlers")
+    {
+        std::string data = get_brawlers();
+        json response_json;
+        response_json["type"] = 4;
+        response_json["data"]["content"] = data;
+
+        json response;
+        response["statusCode"] = 200;
+        response["headers"]["Content-Type"] = "application/json";
+        response["body"] = response_json.dump();
         return invocation_response::success(response.dump(), "application/json");
     }
     else
