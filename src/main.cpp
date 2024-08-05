@@ -14,29 +14,6 @@ using json = nlohmann::json;
 std::string DISCORD_PUBLIC_KEY = std::getenv("DISCORD_PUBLIC_KEY");
 std::string BRAWLSTARS_API_TOKEN = std::getenv("BRAWLSTARS_API_TOKEN");
 
-// Function to parse the raw HTTP request string
-std::unordered_map<std::string, std::string> parse_headers(const std::string& request) 
-{
-    std::unordered_map<std::string, std::string> headers;
-    std::istringstream stream(request);
-    std::string line;
-
-    // Parse headers
-    while (std::getline(stream, line) && !line.empty()) 
-    {
-        auto delimiter_pos = line.find(':');
-        if (delimiter_pos != std::string::npos) {
-            std::string header_name = line.substr(0, delimiter_pos);
-            std::string header_value = line.substr(delimiter_pos + 1);
-            // Trim leading spaces from header values
-            header_value.erase(0, header_value.find_first_not_of(" \t"));
-            headers[header_name] = header_value;
-        }
-    }
-    
-    return headers;
-}
-
 // Function to handle the response from the Brawl Stars API
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
     size_t newLength = size * nmemb;
@@ -52,7 +29,8 @@ std::string get_brawl_stars_data() {
     curl = curl_easy_init();
     if(curl) {
         struct curl_slist *headers = NULL;
-        headers = curl_slist_append(headers, ("Authorization: Bearer " + BRAWLSTARS_API_TOKEN).c_str());
+        std::string auth = "Authorization: Bearer " + BRAWLSTARS_API_TOKEN;
+        headers = curl_slist_append(headers, auth.c_str());
         curl_easy_setopt(curl, CURLOPT_URL, "https://api.brawlstars.com/v1/events/rotation");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
@@ -149,8 +127,13 @@ invocation_response LambdaHandler(invocation_request const& request)
      // Check if the body type is 1
     if (body_json["type"] == 1) 
     {
+        std::cout << "Ping request received" << std::endl;
+        json response_body;
+        response_body["type"] = 1;
+
         json response_json;
-        response_json["type"] = 1;
+        response_json["statusCode"] = 200;
+        response_json["body"] = response_body.dump();
         return invocation_response::success(response_json.dump(), "application/json");
     }
     else if(body_json["type"] == 2)

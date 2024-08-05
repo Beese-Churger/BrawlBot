@@ -9,3 +9,7 @@ output "function_name" {
 
   value = aws_lambda_function.brawlbot-main.function_name
 }
+
+output "base_url" {
+  value = aws_api_gateway_deployment.deployment.invoke_url
+}
