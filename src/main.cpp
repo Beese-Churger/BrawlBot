@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <curl/curl.h>
 #include <cstdlib>
+#include <ctime>
 
 using namespace aws::lambda_runtime;
 using json = nlohmann::json;
@@ -23,7 +24,20 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::stri
     return newLength;
 }
 
-std::string get_brawlers() {
+std::string FormatTime(const std::string& time_str)
+{
+    // Parse the input time string (e.g., "20240805T080000.000Z")
+    std::tm tm = {};
+    std::istringstream ss(time_str.substr(0, 15)); // Exclude the ".000Z"
+    ss >> std::get_time(&tm, "%Y%m%dT%H%M%S");
+
+    // Convert to a human-readable format
+    std::ostringstream out;
+    out << std::put_time(&tm, "%m-%d %H:%M");
+    return out.str();
+}
+
+std::string GetBrawlers() {
     CURL* curl;
     CURLcode res;
     std::string readBuffer;
@@ -50,7 +64,7 @@ std::string get_brawlers() {
     return readBuffer;
 }
 
-std::string get_brawl_stars_data() {
+std::string GetEventData() {
     CURL* curl;
     CURLcode res;
     std::string readBuffer;
@@ -71,16 +85,44 @@ std::string get_brawl_stars_data() {
     return readBuffer;
 }
 
+std::string FormatEventData(std::string& eventData_str)
+{
+    json eventData = json::parse(eventData_str);
+    std::ostringstream formattedData;
+
+    for (const auto& event : eventData)
+    {
+        std::string start_time = FormatTime(event["startTime"]);
+        std::string end_time = FormatTime(event["endTime"]);
+        std::string mode = event["event"]["mode"];
+        std::string map = event["event"]["map"];
+
+        if(mode == "soloShowdown")
+            mode = "Showdown";
+
+        if(mode == "duoShowdown")
+            continue;
+
+        std::toupper(mode[0]);
+
+        formattedData << "Mode: " << mode << "\n";
+        formattedData << "Map: " << map << "\n";
+        formattedData << "Start Time: " << start_time << " | " << "End Time: " << end_time << "\n";
+        formattedData << "-------------------------\n";
+    }
+
+    return formattedData.str();
+}
 invocation_response CommandHandler(json body)
 {
     std::string command = body["data"]["name"];
 
     if(command == "events")
     {
-        std::string brawl_data = get_brawl_stars_data();
+        std::string eventData = GetEventData();
         json response_json;
         response_json["type"] = 4; 
-        response_json["data"]["content"] = brawl_data; 
+        response_json["data"]["content"] = FormatEventData(eventData); 
   
         json response;
         response["statusCode"] = 200;
@@ -91,7 +133,7 @@ invocation_response CommandHandler(json body)
     }
     else if (command == "brawlers")
     {
-        std::string data = get_brawlers();
+        std::string data = GetBrawlers();
         json response_json;
         response_json["type"] = 4;
         response_json["data"]["content"] = data;
@@ -108,7 +150,7 @@ invocation_response CommandHandler(json body)
     }
 }
 
-bool verify_payload(std::string signature, std::string timestamp, std::string body)
+bool VerifyPayload(std::string signature, std::string timestamp, std::string body)
 {
     std::cout << "Starting payload verification" << std::endl;
 
@@ -159,7 +201,7 @@ invocation_response LambdaHandler(invocation_request const& request)
     std::string signature = headers.at("x-signature-ed25519");
     std::string timestamp = headers.at("x-signature-timestamp");
 
-    if(!verify_payload(signature, timestamp, body))
+    if(!VerifyPayload(signature, timestamp, body))
     {
         return invocation_response::failure("failed signature", "application/json");
     }
